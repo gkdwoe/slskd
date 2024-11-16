@@ -16,7 +16,7 @@
 // </copyright>
 
 using Microsoft.Extensions.Options;
-using i2c;
+using I2C;
 using slskd.Files;
 
 namespace slskd.Relay
