@@ -16,6 +16,7 @@
 // </copyright>
 
 using Microsoft.Extensions.Options;
+using i2c;
 using slskd.Files;
 
 namespace slskd.Relay
@@ -422,6 +423,17 @@ namespace slskd.Relay
                     {
                         Log.Information("Upload of file {Filename} with ID {Id} succeeded.", filename, token);
                     }
+
+                    string[] split = filename.Split("\\");
+                    if (split.Length >= 5)
+                    {
+                        string artist = split[2];
+                        string album = split[3];
+                        string track = split[4];
+                        filename = $"{artist} - {album} - {track}";
+                    }
+
+                    I2CDriver.GetInstance().QueueMessage(filename, response.IsSuccessStatusCode);
                 }
                 catch (Exception ex)
                 {

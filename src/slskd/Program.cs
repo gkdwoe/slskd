@@ -15,6 +15,7 @@
 //     along with this program.  If not, see https://www.gnu.org/licenses/.
 // </copyright>
 
+using I2C;
 using Microsoft.Extensions.Logging;
 
 namespace slskd
