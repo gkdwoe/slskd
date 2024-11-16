@@ -143,7 +143,10 @@ namespace I2C
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            lcd.Clear();
+            driver?.Dispose();
+            lcd?.Dispose();
+            messageTask?.Dispose();
         }
     }
 }
