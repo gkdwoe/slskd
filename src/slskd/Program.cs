@@ -793,12 +793,20 @@ namespace slskd
             }
 
             services.AddRouting(options => options.LowercaseUrls = true);
-            services.AddControllers().AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.Converters.Add(new IPAddressConverter());
-                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-                options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-            });
+            services.AddControllers()
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.SuppressInferBindingSourcesForParameters = true; // explicit [FromRoute], etc
+                    options.SuppressMapClientErrors = true; // disables automatic ProblemDetails for 4xx
+                    options.SuppressModelStateInvalidFilter = true; // disables automatic 400 for model errors
+                    options.DisableImplicitFromServicesParameters = true; // explicit [FromServices]
+                })
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new IPAddressConverter());
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                });
 
             services
                 .AddSignalR(options =>
@@ -814,7 +822,10 @@ namespace slskd
 
             services.AddHealthChecks();
 
-            services.AddApiVersioning(options => options.ReportApiVersions = true)
+            services.AddApiVersioning(options =>
+                {
+                    options.ReportApiVersions = true;
+                })
                 .AddApiExplorer(options =>
                 {
                     options.GroupNameFormat = "'v'VVV";
@@ -826,13 +837,22 @@ namespace slskd
                 services.AddSwaggerGen(options =>
                 {
                     options.DescribeAllParametersInCamelCase();
-                    options.SwaggerDoc(
-                        "v0",
-                        new OpenApiInfo
+                    options.SwaggerDoc("v0", new OpenApiInfo
+                    {
+                        Version = "v0",
+                        Title = AppName,
+                        Description = "A modern client-server application for the Soulseek file sharing network",
+                        Contact = new OpenApiContact
                         {
-                            Title = AppName,
-                            Version = "v0",
-                        });
+                            Name = "GitHub",
+                            Url = new Uri("https://github.com/slskd/slskd"),
+                        },
+                        License = new OpenApiLicense
+                        {
+                            Name = "AGPL-3.0 license",
+                            Url = new Uri("https://github.com/slskd/slskd/blob/master/LICENSE"),
+                        },
+                    });
 
                     if (IOFile.Exists(XmlDocumentationFile))
                     {
@@ -930,6 +950,10 @@ namespace slskd
 
                     endpoints.MapGet(url, async context =>
                     {
+                        // at the time of writing, the prometheus library doesn't include a way to add authentication
+                        // to the UseMetricServer() middleware. this is most likely a consequence of me mixing
+                        // and matching minimal API stuff with controllers. if i ever straighten that out,
+                        // this should be revisited.
                         if (!options.Authentication.Disabled)
                         {
                             var auth = context.Request.Headers["Authorization"].FirstOrDefault();
@@ -945,8 +969,10 @@ namespace slskd
                             }
                         }
 
-                        var response = await Metrics.BuildAsync();
-                        await context.Response.WriteAsync(response);
+                        var metricsAsText = await Metrics.BuildAsync();
+
+                        context.Response.Headers.Append("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+                        await context.Response.WriteAsync(metricsAsText);
                     });
                 }
             });
